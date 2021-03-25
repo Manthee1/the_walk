@@ -1,0 +1,11 @@
+.text_input_container {
+  flex: 0 0 0; }
+  .text_input_container > input {
+    background-color: var(--light-gray);
+    color: var(--accent);
+    justify-content: flex-end;
+    border: none; }
+  .text_input_container > button {
+    background-color: var(--accent);
+    color: var(--light-black);
+    flex: 0 0 0; }

@@ -1,0 +1,19 @@
+.options
+    flex: 0 0 auto
+    width: 75%
+    height: 75%
+    min-width: 40em
+    margin: auto
+    justify-self: center
+    align-self: center
+    transition: all 0.2s linear
+    >content
+        flex: 1 1 auto
+        >button
+            flex: 0 0 0
+            align-self: flex-end
+@media (max-width: 60em)
+    .options
+        width: 96%
+        min-width: 96%
+        height: 96%

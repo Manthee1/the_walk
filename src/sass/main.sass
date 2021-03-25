@@ -1,0 +1,113 @@
+
+@font-face
+    font-family: "DM_MONO"
+    src: url("./DM_Mono/DMMono-Medium.ttf")
+
+html
+    font-size: 1.5em
+    font-family: "DM_MONO"
+    --black: #080808
+    --light-black: #131313
+    --light-gray: #1B1B1B
+    --accent: #990a35
+    --light: #f0e9e9
+
+*
+    outline: none
+    margin: 0px
+
+body, #app
+    display: flex
+    flex-flow: column nowrap
+    margin: 0px
+    padding: 0px
+    box-sizing: border-box
+    width: 100vw
+    height: 100vh
+    overflow: hidden
+    background-color: var(--light-black)
+    color: var(--light)
+
+import
+    display: none
+
+.container
+    background-color: var(--light-black)
+    color: var(--accent)
+    border: 2px solid var(--accent)
+
+    > .title
+        background-color: var(--accent)
+        color: var(--light-black)
+        text-align: center
+        flex: 0 0 auto
+        font-weight: 500
+
+h1
+    font-size: 300%
+
+h2
+    font-size: 120%
+
+.m-05
+    margin: 0.5em
+.mv-05
+    margin-top: 0.5em
+    margin-bottom: 0.5em
+.mh-05
+    margin-left: 0.5em
+    margin-right: 0.5em
+
+.mt-05
+    margin-top: 0.5em
+.mb-05
+    margin-bottom: 0.5em
+.mr-05
+    margin-right: 0.5em
+.ml-05
+    margin-left: 0.5em
+
+.flex-row
+    display: flex
+    flex-flow: row nowrap
+
+.flex-col
+    display: flex
+    flex-flow: column nowrap
+
+.flex-row, .flex-col
+    flex: 1 1 auto
+    >*
+        flex: 1 1 auto
+
+.noborder
+    border: none
+
+/* BUTTON */
+
+.trans-all
+    transition: all 0.1s linear
+
+button,.button
+    background-color: var(--accent)
+    border: 4px solid transparent
+    color: var(--light-black)
+    font-weight: 600
+    font-size: 100%
+    padding: 0.2em 0.4em
+    cursor: pointer
+    transition: all 0.1s linear
+
+    &:hover
+        background-color: var(--light-black)
+        color: var(--accent)
+        border-color: var(--accent)
+
+    &:active,.button-active
+        filter: brightness(0.8)
+
+    &:disabled
+        background-color: var(--light-gray)
+        color: var(--light-black)
+        border-color: transparent
+        cursor: not-allowed

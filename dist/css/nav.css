@@ -1,0 +1,19 @@
+nav {
+  display: flex;
+  flex-flow: column nowrap;
+  margin: 0em;
+  height: 2.5em;
+  width: 100%;
+  background: var(--light-gray); }
+
+nav > h2 {
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-content: center;
+  text-align: center;
+  margin: 0px;
+  color: var(--light-black);
+  background-color: var(--accent);
+  width: 10em;
+  height: 100%; }

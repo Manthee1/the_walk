@@ -1,0 +1,49 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="../css/main.css">
+    <script src="../js/main.js"></script>
+    <script src="../js/main-functions.js"></script>
+    <title>The walk</title>
+</head>
+<body onload="startup()">
+<div id='blinder'><img id='loading' src='../img/loading.gif'></div>
+    <div id='story-text-container'>
+
+            <textarea disabled id="story-text">And there it was, Their village burned to ashes.</textarea>
+            
+            <div id="story-button-container">
+            <div id="story-continue-button" onclick='beginning(1)'>Continue</div>
+            
+            <button id="story-skip-button" onclick="currentStorySkip()">Skip</button>
+            </div>
+            </div>
+            <div id="status-container">
+                <span id="stat-colonists-text">Colonists : <span id="stat-colonists"></span></span><br>
+                <span id="stat-resources-text">Resources : <span id="stat-resources"></span></span><br>
+                <span id="stat-water-text">Water : <span id="stat-water"></span></span><br>
+                <span id="stat-food-text">Food : <span id="stat-food"></span></span><br>
+                <span id="stat-day-text">Day : <span id="stat-day"></span></span><br>
+
+            </div>
+
+            <div id="location-quality-container">
+
+                <span id="location-river-quality">River : <span id="river-quality"></span></span><br>
+                <span id="location-sound-quality">Sound : <span id="sound-quality"></span></span><br>
+                <span id="location-forest-quality">Forest : <span id="forest-quality"></span></span><br>
+                <span id="location-beauty-quality">Beauty : <span id="beauty-quality"></span></span><br>
+                <span id="location-plants-quality">Plants : <span id="plants-quality"></span></span><br>
+                <span id="location-terrain-quality">Terrain : <span id="terrain-quality"></span></span><br>
+                <span id="location-ocupied-quality">Ocupied : <span id="ocupied-quality"></span></span>
+
+
+
+            </div>
+    
+</body>
+</html>

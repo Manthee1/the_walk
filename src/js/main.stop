@@ -1,0 +1,1392 @@
+function startup() {
+    document.getElementById("blinder").remove();
+    map.draw();
+    setDefaultVariables();
+    stat.update();
+
+    if (_.elementExists("realipsip")) {
+        _.id("realipsip").remove();
+    }
+}
+function setDefaultVariables() {
+    globalVariables = {
+        resources: 25,
+        colonists: 100,
+        day: 1,
+        food: 100,
+        water: 100,
+        direction: null,
+
+        colonistsLostOverall: 0,
+        resourcesLostOverall: 0,
+        waterLostOverall: 0,
+        foodLostOverall: 0,
+
+        visitedLocations: 0,
+    };
+    colorsForLocations = ["green", "darkgreen", "darkblue", "aqua", "yellowgreen", "grey", "lawngreen", "springgreen", "palegreen", "hotpink", "firebrick"];
+    posibleLocations = ["forest", "rainforest", "lake", "river", "swamp", "mountains", "hills", "valley", "plains", "city", "village"];
+    stats = ["colonists", "resources", "water", "food", "day"];
+}
+//Delete an item from an array
+
+//Add a story(text) and keep the previus one
+function addStory(x = "") {
+    if (x.trim() != "") {
+        _.id("story-text").innerHTML += x;
+    }
+}
+// Add a story(text) but replace the previus one
+function overwriteStory(x = "") {
+    _.id("story-text").innerHTML = x;
+}
+
+buttons = {
+    create: function (button, x, y = true, newC = true) {
+        if (button == "c") {
+            //Continue Button
+
+            if (_.elementExists("story-continue-button")) {
+                _.id("story-continue-button").setAttribute("onclick", x);
+            } else if (y == true) {
+                _.id("story-button-container").innerHTML += "<div id='story-continue-button' onclick=\"" + x + '">Continue</button>';
+            } else {
+                _.id("story-button-container").innerHTML += "<button id='story-continue-button' onclick=\"" + x + '">' + y + "</button>";
+            }
+            stat.update();
+        } else if (button == "mv") {
+            e = _.id("story-story.moveon-button");
+            if (!_.elementExists(e)) {
+                _.id("story-button-container").innerHTML += "<button id='story-story.moveon-button' onclick='story.moveon()'>Move On</button>";
+            }
+        } else if (button == "st") {
+            e = _.id("story-settle-button");
+            if (!_.elementExists(e)) {
+                _.id("story-button-container").innerHTML += "<button id='story-settle-button' onclick='story.settleHere()'>Settle here</button>";
+            }
+        } else if (button == "n") {
+            e = _.id("story-north-button");
+            if (!_.elementExists(e)) {
+                _.id("map-container").innerHTML += "<div onclick=\"map.currentPos.y++;story.travelDirection('" + x + "'," + y + ");\"' id='story-north-button' class='map-north-button'></div>";
+            }
+        } else if (button == "e") {
+            e = _.id("story-east-button");
+            if (!_.elementExists(e)) {
+                _.id("map-container").innerHTML += "<div onclick=\"map.currentPos.x++;story.travelDirection('" + x + "'," + y + ");\"' id='story-east-button' class='map-east-button'></div>";
+            }
+        } else if (button == "s") {
+            e = _.id("story-south-button");
+            if (!_.elementExists(e)) {
+                _.id("map-container").innerHTML += "<div onclick=\"map.currentPos.y--;story.travelDirection('" + x + "'," + y + ");\"' id='story-south-button' class='map-south-button'></div>";
+            }
+        } else if (button == "w") {
+            e = _.id("story-west-button");
+            if (!_.elementExists(e)) {
+                _.id("map-container").innerHTML += "<div onclick=\"map.currentPos.x--;story.travelDirection('" + x + "'," + y + ");\"' id='story-west-button' class='map-west-button'></div>";
+            }
+        } else if (button == "custom") {
+            if (y != true) {
+                _.id("story-button-container").innerHTML += "<button id='story-custom-button' onclick=\"" + x + '">' + y + "</button>";
+            }
+        }
+    },
+    remove: function (button) {
+        if (button == "all") {
+            _.id("story-button-container").innerHTML = "";
+            if (_.elementExists("story-north-button")) {
+                _.id("story-north-button").remove();
+                _.id("story-east-button").remove();
+                _.id("story-south-button").remove();
+                _.id("story-west-button").remove();
+            }
+        } else {
+            _.elementExists("story-" + button + "-button") && _.id("story-" + button + "-button").remove();
+        }
+    },
+};
+
+story = {
+    exploreStories: (exploreStories = {
+        smallCave: function (num) {
+            if (Math.chance(num)) {
+                addStory("\nWhile exploring they came across a small cave. Interestingly, the cave wasn't empty, It had some helpful stuff laying around.");
+                if (Math.chance(25)) {
+                    addStory("Upon entering the cave, one colonist stumbled into a trap which lead him to immediate crushing death.");
+                    stat.remove.colonists(1);
+                } else {
+                    addStory("\nThey entered the cave and got out safely with some extra resources.");
+                }
+            }
+        },
+        caves: function (num) {
+            if (Math.chance(num)) {
+                addStory("\nAround the direction, they discovered multiple prehistoric caves that seemed to be untouched. They spend some time exploring them. Nonetheless, they found nothing of value.");
+                if (Math.chance(25)) {
+                    addStory("Unluckily, one colonist tripped on som slippery stones near a small cliff in a cave. He was later found on a spike transfixing his chest. He died immediately.");
+                    stat.remove.colonists(1);
+                }
+                locationsExplored = true;
+            }
+        },
+        bigTree: function (num) {
+            if (Math.chance(num)) {
+                addStory("\nNear the settlement stood an enormous tree. It was impressive for the colonist to wonder how is it that it achieved such a great accomplishment. Apart from that, its only purpose would be an orientation compass, a landmark on which the colonists could find their way back.");
+
+                locationsExplored = true;
+            }
+        },
+        oldHut: function (num) {
+            if (Math.chance(num)) {
+                if (Math.chance(50)) {
+                    addStory("\nAround the location the colonists were exploring, they came across an old hut. Its walls were coming apart and half its roof was already on the ground. Entering the hut most of it was empty. They found nothing but some berries in a bucket.");
+                    stat.add.food(2);
+                } else {
+                    addStory("\nWhile investigating their location they discovered an old abandoned hut. Inside it was an entire room, full of material, food, and water. The colonists gathered every last crumb of its goods and quietly walked out.");
+                    stat.add.food(Math.roundRandom(5, 20));
+                }
+                locationsExplored = true;
+            }
+        },
+        smallHouses: function (num) {
+            if (Math.chance(num)) {
+                addStory("\nAlong a narrow dusty road hid a row of small houses. They seemed abandoned.");
+                if (Math.chance(25)) {
+                    addStory("Inside most of them, there was nothing, except for one small house which held lots of food, still edible.");
+                    stat.add.food(Math.roundRandom(4, 15));
+                } else {
+                    addStory("\nBut even after hours of searching the homes, they found nothing but breadcrumbs");
+                }
+
+                locationsExplored = true;
+            }
+        },
+        oldMine: function (num) {
+            if (Math.chance(num)) {
+                addStory("\nA lot of exploring later they found what looks like holes in the walls. But further investigating they discovered that those weren't just holes, but hand build mines abandoned years ago.");
+                if (Math.chance(25)) {
+                    addStory("As they entered the mines most of the tunnels we're buried beneath the rubel, but one area had multiple minecarts filled with coal and some other materials.");
+
+                    stat.add.resources(Math.roundRandom(4, 12));
+                } else {
+                    addStory("\nAs they entered the mines they found nothing but cracked minecart tracks and broken down empty minecarts. ");
+                }
+
+                locationsExplored = true;
+            }
+        },
+        oldTemple: function (num) {
+            if (Math.chance(num)) {
+                addStory("\nSome time of searching later led them to an ancient temple. Most of it was fallen apart except for the insides witch were, amazingly, mostly intact. It still resembled its former glory. At least from what the colonists could extrapolate it as.");
+
+                locationsExplored = true;
+            }
+        },
+        settlmentRemains: function (num) {
+            if (Math.chance(num)) {
+                addStory(
+                    "\nAround their settlement, they found evidence of a past one once existing at this same location. Maybe the settlers just got unlucky with a band of raiders, or maybe there is something else at play here. Only time could tell. The colonists gathered up the remains and kept them for future use."
+                );
+                stat.add.resources(Math.roundRandom(1, 3));
+
+                locationsExplored = true;
+            }
+        },
+        monumentalRuins: function (num) {
+            if (Math.chance(num)) {
+                addStory("\nIn the distance, one scout spotted something. It looks like a bunch of rubles spread across that area. nonetheless, It won't hurt to investigate. But as the scout predicted. Just ruble probably from a past monument. Nothing of value. But it still is rather interesting.");
+
+                locationsExplored = true;
+            }
+        },
+    }),
+    beginning: function (x, skip = false) {
+        if (x == 1) {
+            addStory("\nThankfully everybody got out. All 100 colonists.\nThe fire devestated the forest. The river was drying from the emens heat. There was no hope for rebuilding.\nThey needed to search for a new, maybe eaven better place.");
+            buttons.create("c", "story.beginning(2)");
+        }
+        if (x == 2) {
+            addStory("\n\nYou are their leader. They will follow you where ever you lead them.\nYou know this place very well. To the east a lake.\nTo the west more forests\nand to the south only plains.\nYou must pick a way for the best intrest of your people");
+            buttons.create("c", "story.beginning(100)");
+        }
+        if (x == 100) {
+            if (skip) {
+                overwriteStory("To the east a lake.\nTo the west more forests\nTo the south only plains. And to the north there are hills\nYou must pick a way for the best intrest of your people");
+            }
+            addStory("\n\nLead the way, we must move!");
+            buttons.remove("all");
+            buttons.create("e", "lake");
+            buttons.create("s", "plains");
+            buttons.create("w", "forest");
+            buttons.create("n", "hills");
+        }
+    },
+    //Add choice buttons that lead to a specific or unclear direction
+    travelDirection: function (direction, confidance = true) {
+        directionConfiance = confidance;
+        globalVariables.direction = direction;
+        var newstory = "You choose to go to the " + globalVariables.direction + "\nYou hope everybody will stay safe";
+        overwriteStory(newstory);
+        map.draw();
+        buttons.remove("all");
+        buttons.create("c", "story.encounter.initialize();");
+    },
+    // Adds the settle or move on button. Typicaly when you wind a location
+    // If you choose to move on that the scouts cout out the directions and give you a guess on whats there
+    randomizeDirections: function () {
+        var newstory = "\n";
+        var dirButtons = ["west", "north", "east", "south"];
+        var directions = [];
+
+        buttons.remove("all");
+
+        westCell = rememberedLocations.getLocation(map.currentPos.x - 1, map.currentPos.y);
+        northCell = rememberedLocations.getLocation(map.currentPos.x, map.currentPos.y + 1);
+        eastCell = rememberedLocations.getLocation(map.currentPos.x + 1, map.currentPos.y);
+        southCell = rememberedLocations.getLocation(map.currentPos.x, map.currentPos.y - 1);
+
+        for (let i = 0; i < dirButtons.length; i++) {
+            var heading = posibleLocations[Math.roundRandom(0, posibleLocations.length - 1)];
+            var headings = [];
+            var locationCertianty = true;
+            if (Math.chance(20 * locationCertianty)) {
+                var randSentence = " They spot ";
+            } else if (Math.chance(20 * locationCertianty)) {
+                var randSentence = " The scout are sure they sighted ";
+            } else if (Math.chance(40 / locationCertianty)) {
+                var randSentence = " There maybe ";
+                locationCertianty = false;
+            } else if (Math.chance(20 * locationCertianty)) {
+                //Makes the story more diffrent and not repetative
+                var randSentence = " It's clearly ";
+            } else {
+                var randSentence = " They spot something that looks like ";
+                locationCertianty = false;
+            }
+
+            if (dirButtons[i] == "west" && westCell != undefined) {
+                heading = westCell.type;
+                locationCertianty = true;
+            } else if (dirButtons[i] == "north" && northCell != undefined) {
+                heading = northCell.type;
+                locationCertianty = true;
+            } else if (dirButtons[i] == "east" && eastCell != undefined) {
+                heading = eastCell.type;
+                locationCertianty = true;
+            } else if (dirButtons[i] == "south" && southCell != undefined) {
+                heading = southCell.type;
+                locationCertianty = true;
+            }
+
+            //if it's plural
+            if (heading.charAt(heading.length - 1) == "s") {
+                if (headings.includes(heading)) {
+                    //If the heading already exists eg. plains. say 'There are MORE plains' not 'There are THE plains '
+                    var abbreviation = "more";
+                } else {
+                    var abbreviation = "the";
+                }
+            } else {
+                // A special kind of an abriviations ands 'another' or 'more' if the scouts alredy saw the same location while scouting
+                if (headings.includes(heading)) {
+                    var abbreviation = "another";
+                } else {
+                    var abbreviation = "a";
+                }
+            }
+
+            headings.push(heading);
+            newstory += "\nTo the " + dirButtons[i] + randSentence + abbreviation + " " + heading;
+            //Adds the heading buttons for the specific heading
+            eval("buttons.create('" + dirButtons[i].charAt(0) + "','" + heading + "'," + locationCertianty + ");");
+        }
+        // removes the continue button because there is no further story ot read but to chose the heading
+        return newstory;
+    },
+
+    //Random encounter during travel
+    encounter: {
+        encountersTypes: ["raiders", "storm", "wagon", "raidedVillage"],
+        initialize: function (type = null, stage = 0) {
+            if (type == null) {
+                map.draw();
+                //If it's getting executed the first time find a random encounter and than the secound click on the continue button takes you to the encounter story
+                if (Math.chance(50)) {
+                    // 50% chance your not gonna encounter anything
+                    var newstory = "\n\nYour colonists had a safe passage to the " + globalVariables.direction + " nobody was hurt";
+                    addStory(newstory);
+                    buttons.create("c", "story.createLocation()");
+                } else {
+                    // Else pick an encounter, add the story and create a button that takes you to that specific encounter
+
+                    var encounternum = Math.floor(Math.random() * story.encounter.encountersTypes.length);
+                    eval("story.encounter." + story.encounter.encountersTypes[encounternum] + "(0)");
+                }
+            }
+        },
+
+        raiders: function (stage) {
+            switch (stage) {
+                case 0:
+                    var newstory = "\n\nYou encounter a band of raiders";
+                    buttons.create("c", "story.encounter.raiders(1)");
+                    addStory(newstory);
+                    break;
+                case 1:
+                    // Raider encounter
+                    if (Math.chance(globalVariables.colonists / 2)) {
+                        let colonistsLost = 0;
+                        let resourcesLost = 0;
+                        if (globalVariables.colonists <= 30) {
+                            // Depends on how much colonists you have to scare the raiders which can kill colonists and steal resources
+                            resourcesLost = Math.roundRandom(1, 5);
+                            colonistsLost += Math.roundRandom(1, 9);
+
+                            var newstory =
+                                "\n\nThe raiders witness fear inside your colonists and see them as an easy target\nThey start their attack but they are surprised by the strength of your colonists\nThe raiders ran off but managed to steal " +
+                                resourcesLost +
+                                " resources and " +
+                                colonistsLost +
+                                " colonists died in the battle";
+                        } else {
+                            resourcesLost = Math.roundRandom(0, 3);
+                            colonistsLost += Math.roundRandom(0, 4);
+
+                            var newstory = "\n\nThe raiders see that you have a big group\nThey see it as a challange that they can't pass on\nThe raiders move in to attack only to be overwhelmed by the sheer numbers.\n";
+                            if (resourcesLost == 0) {
+                                newstory += "\nThe raiders ran with fear with nothing collected\n";
+                            } else {
+                                newstory += "\nThe raiders run of with " + resourcesLost + " of the resources";
+                            }
+                            if (colonistsLost == 0) {
+                                newstory += "\nThankfully nobody was hurt";
+                            }
+                            newstory += " " + colonistsLost + " colonist" + colonistsLost > 1 && "s" + " died in battle";
+                        }
+                        addStory(newstory);
+                        resourcesLost != 0 && stat.remove.resources(resourcesLost);
+                        colonistsLost != 0 && stat.remove.colonists(colonistsLost);
+                    } else {
+                        var newstory = "\n\nThe raiders saw how much colonists you have\nThey are not redy to atack yet\nFear swells their eyes, and they runoff. Never to be seen again";
+                        addStory(newstory);
+                    }
+                    buttons.remove();
+                    buttons.create("c", "story.createLocation()");
+                    break;
+            }
+        },
+        storm: function (stage) {
+            switch (stage) {
+                case 0:
+                    var newstory = "\n\nA Storm has just risen\nYou must take cover quiclky before it gets too dangerous";
+                    buttons.create("c", "story.encounter.storm(1)");
+                    addStory(newstory);
+                    break;
+                case 1:
+                    var newstory = "";
+                    //it also depends to which globalVariables.direction you are going
+                    if (globalVariables.direction == "forest" || globalVariables.direction == "moutains" || globalVariables.direction == "rainforest") {
+                        if (Math.chance(50)) {
+                            globalVariables.day++;
+                            var newstory = "\n\nThe storm blurishes with anger. It's coming closer and closer.\nFortunetly there was an empty cave where you colonists hid in.\nThey spent 1 day in the cave waiting for the storm to pass.";
+                            addStory(newstory);
+                        } else {
+                            var newstory = "\n\nFortunetly the storm has somehow reversed course.\nYour colonists continued to follow you to the " + globalVariables.direction;
+                            addStory(newstory);
+                        }
+                    } else {
+                        if (Math.chance(50)) {
+                            var colonistsLost = Math.roundRandom(1, 5);
+                            newstory += "\n\nThe storm moves in faster then expected.\nUnfortunutly there was no cover to hide in.\nYou keep moving throught the storm but " + colonistsLost + " of colonists died or got lost in the storm\nNeverthelest you must keep moving.";
+                            addStory(newstory);
+                            stat.remove.colonists(colonistsLost);
+                        } else {
+                            newstory += "\n\nYour colonists managed to avoid the storm and didn't lose a day of progress.\nYou continue safely passing to the " + globalVariables.direction;
+                            addStory(newstory);
+                        }
+                    }
+                    buttons.remove();
+                    buttons.create("c", "story.createLocation()");
+                    break;
+            }
+        },
+        wagon: function (stage) {
+            switch (stage) {
+                case 0:
+                    var newstory = "\n\nAlong the way you encounter debri that looks like it could be an old wagon. It has some usable materials.";
+                    buttons.create("c", "story.encounter.wagon(1)");
+                    addStory(newstory);
+                    break;
+                case 1:
+                    // The wagon encounter gives you 1-5 resources
+                    var resourcesGained = Math.roundRandom(1, 4);
+                    var newstory = "\n\nYour colonists gathered the leftovers +" + resourcesGained + " resources were scavanged.";
+                    addStory(newstory);
+                    stat.add.resources(resourcesGained);
+                    buttons.remove();
+                    buttons.create("c", "story.createLocation()");
+                    break;
+            }
+        },
+        raidedVillage: function (stage) {
+            switch (stage) {
+                case 0:
+                    var newstory = "\n\nWhile traveling you encounter a burning village. The raiders overwhellmed the villagers an they need help!\nDo you choose to help these villagers or continue forward?";
+                    buttons.create("c", "story.encounter.raidedVillage(100)");
+                    buttons.create("custom", "story.encounter.raidedVillage(1)", "Help");
+                    addStory(newstory);
+                    break;
+                case 1:
+                    //-------FINISH------------
+                    buttons.remove("all");
+                    var newstory = "";
+                    newstory += "\nYou choose to help the villagers.";
+                    if (globalVariables.colonists > 70) {
+                        if (Math.chance(75)) {
+                            if (Math.chance(50)) {
+                                newstory += "\nThe raiders see the colonist army marching in their direction. they imidiatly gather all that thay can and runof.";
+                            } else {
+                                //Either they leave or a fight persusues and we lose 1-5 colonists
+                                newstory +=
+                                    "\nAlltough you have quite an army prepared. the raiders didn't think for a second to run away.\n All of them immediately start running towards you and it results in a big battle.\nThankfully for your leadership skills along whit your colonists you successfully defeated the raiders with a minimal loss.";
+                                addStory(newstory);
+                                newstory = "";
+                                stat.remove.colonists(Math.roundRandom(1, 5));
+                            }
+                            newstory += "\nThe villagers thank you for your help and give you what little they had.";
+                            addStory(newstory);
+                            newstory = "";
+                            stat.add.water(Math.roundRandom(2, 16));
+                            stat.add.food(Math.roundRandom(3, 18));
+                            stat.add.resources(Math.roundRandom(1, 4));
+                            newstory = "\nThey eaven offer to come along with your group, and who are you do decline them.";
+                            addStory(newstory);
+                            newstory = "";
+                            stat.add.colonists(Math.roundRandom(5, 16));
+                        } else {
+                            //Or the raiders uncover their big army and you kinda run away...
+                            newstory += "\nEven though all of your colonists gathered up, An army of raiders suddently apeared and overwhelemd your colonists which made them run away and continuing your direction.\nFrom a distance you could only see smoke coming from the village.";
+                        }
+                    } else if (globalVariables.colonists > 30) {
+                        if (Math.chance(50)) {
+                            newstory += "\nYour colonists gather up and prepare to atack. The raiders quickly move in and it results in a day long battle for the village.";
+                            addStory(newstory);
+                            globalVariables.day++;
+                            buttons.create("c", "story.encounter.raidedVillage(1)',2)");
+                            break;
+                        } else {
+                            newstory +=
+                                "\nImidiatly after you gather up your group the raiders flee away. They probably couldn't afford to lose any man, but none the less the villagers thank you and offer tho come with you as they have nothing left of the village.\nOfcorse you accept their request and continue on your way.";
+                            addStory(newstory);
+                            newstory = "";
+                            stat.add.colonists(Math.roundRandom(5, 20));
+                        }
+                    } else {
+                        newstory += "\nAlthough you chose to help the villagers. You have far few men to even have a chance of defeating the raiders.";
+                        if (Math.chance(20)) {
+                            newstory += "\nBut some of the villagers that gave up on the village choose to go with you. Even though you can't help the village you could help some of the villagers. You gladly accept their request and continue on your way";
+                            stat.add.colonists(Math.roundRandom(3, 9));
+                        } else {
+                            newstory += "\nThere is no help for this village. It would be a waste of time and men defending it. you choose to continue your walk instead.";
+                        }
+                    }
+                    addStory(newstory);
+                    buttons.create("c", "story.createLocation()");
+                    break;
+
+                case 2:
+                    if (Math.chance(50)) {
+                        newstory = "\nAfter a long day of fighting. Your colonists manage to beat the opponent.\n The raiders run away and the villagers give you something for your trubles";
+                        addStory(newstory);
+                        stat.add.food(Math.roundRandom(2, 7));
+                        stat.add.water(Math.roundRandom(1, 6));
+                    } else {
+                        newstory = "\nAfter a long day of fighting. the raiders overwhelm the colonists and you have no choice but to back down. A lot of good men were lost during that battle, but you can't grieve now. We must continue our walk.";
+                        stat.remove.colonists(Math.roundRandom(3, 14));
+                    }
+                    buttons.create("c", "story.createLocation()");
+                    addStory(newstory);
+                    break;
+                case 100:
+                    var newstory = "\nYou chose to ignore the village and continue your direction";
+                    buttons.create("c", "story.createLocation()");
+                    addStory(newstory);
+                    break;
+            }
+        },
+    },
+    //Starts the location randomizer and adds something to the storys to make it location specific
+    createLocation: function (stage = null) {
+        if (stage == null) {
+            var newstory = "";
+            // First stage basically just welcomes you to the location and creates a button for the next step
+            globalVariables.day += Math.roundRandom(1, 4);
+            globalVariables.water -= Math.roundRandom(1, globalVariables.colonists / 12); // Subtracts random number of food and water and adds random amount days to the counter
+            globalVariables.food -= Math.roundRandom(1, globalVariables.colonists / 20);
+            globalVariables.visitedLocations++;
+
+            if (!directionConfiance && Math.chance(80)) {
+                newstory = "It seems that which you have tought was the " + globalVariables.direction + ".";
+                var PLWOLFTF = [...posibleLocations]; // PossibleLocations Without One Location For This Function
+                globalVariables.direction = PLWOLFTF[Math.roundRandom(0, PLWOLFTF.length - 1)];
+                newstory += "\nTurned out to be the " + globalVariables.direction + ", what an unexpected suprise.\n";
+            }
+
+            newstory += "Your colonists arrive at the " + globalVariables.direction;
+            overwriteStory(newstory);
+            buttons.create("c", "story.createLocation(1)");
+        } else if (stage == 1) {
+            rememberedLocations.addLocation(map.currentPos.x, map.currentPos.y, {
+                x: map.currentPos.x,
+                y: map.currentPos.y,
+                visited: true,
+                color: colorsForLocations[posibleLocations.indexOf(globalVariables.direction)],
+                type: globalVariables.direction,
+                occupied: null,
+            });
+            map.draw();
+
+            switch (globalVariables.direction) {
+                case "rainforest":
+                    break;
+                case "lake":
+                    break;
+                case "river":
+                    break;
+                case "swamp":
+                    break;
+                case "mountains":
+                    break;
+                case "hills":
+                    break;
+                case "valley":
+                    var newstory = "\n\nIt's nice and peaceful with green everywhere.";
+                    addStory(newstory);
+                    var sound = "\nthe " + globalVariables.direction + " " + abbreviation + " a silent but comforting location";
+                    var beauty = "\nAn alluring place filled with dandelions and tall grass.\nIt has hills here and there, but never the less it's smooth as a pumpkin.";
+
+                    break;
+                case "plains":
+                    break;
+                case "city":
+                    break;
+                case "village":
+                    break;
+                default:
+                    break;
+            }
+
+            //Makes the specific parameters for these locations and lets the randomizer handle what's left
+            if (globalVariables.direction == "valley" || globalVariables.direction == "plains") {
+                if (globalVariables.direction == "valley") {
+                    abbreviation = "is";
+                } else {
+                    // Abbreviations are here to give the story grammar
+                    abbreviation = "are";
+                }
+                var newstory = "\n\nIt's nice and peaceful with green everywhere.";
+                addStory(newstory);
+                var sound = "\nthe " + globalVariables.direction + " " + abbreviation + " a silent but comforting location";
+                var beauty = "\nAn alluring place filled with dandelions and tall grass.\nIt has hills here and there, but never the less it's smooth as a pumpkin.";
+
+                plantsOneWord = "some";
+                terrainQuality = 4;
+                plantsQuality = 2;
+                terrainOneWord = "fine";
+                var newstory = story.randomizeLocationParameters(true, true, true, true, false, false, true);
+                // Water locations
+            } else if (globalVariables.direction == "lake" || globalVariables.direction == "river" || globalVariables.direction == "swamp") {
+                if (globalVariables.direction == "lake") {
+                    var newstory = "\n\nThe still water fills you with prosperity.";
+                    riverOneWord = "vast";
+                    riverQuality = 1;
+                } else if (globalVariables.direction == "river") {
+                    var newstory = "\n\nThe flowing water talks to you with joy.";
+                    riverOneWord = "joyfull";
+                    riverQuality = 1;
+                } else {
+                    var newstory = "\n\nThe still swamp water here looks curiuslly beautifull.";
+                    riverOneWord = "dirty";
+                    riverQuality = 2;
+                }
+                abbreviation = "is";
+                addStory(newstory);
+                var sound = "\nThe " + globalVariables.direction + " " + abbreviation + " a beautifull and a calm location";
+                if (globalVariables.direction == "swamp") {
+                    var river =
+                        "\nThere is a " +
+                        globalVariables.direction +
+                        " here which means plenty unhealthy water for the village.\nThes means the use of a filter is essential.\nAlot of frogs live here so theres alot of sound coming from the swamp.\nFor that the village will be located a little bit away from the swamp.";
+                } else {
+                    var river = "\nThere is a " + globalVariables.direction + " here which means plenty water for the village.\nAlot of fish live here which makes fishing possible both as a hobby and as a source of food.";
+                }
+                var terrain = "\nThe terrain is mostly flat which makes it ideal for building.";
+                soundOneWord = "calm";
+                terrainOneWord = "flat";
+                soundQuality = 1;
+                terrainQuality = 1;
+                var newstory = story.randomizeLocationParameters(river, sound, true, true, true, terrain, true);
+                if (globalVariables.direction == "lake" || globalVariables.direction == "river") {
+                    if (Math.chance(50)) {
+                        waterGained = Math.roundRandom(4, 15);
+                        addStory("\nThe colonists gather some water from the " + globalVariables.direction + ".");
+                        stat.add.water(waterGained);
+                    }
+                }
+                // Forest locations
+            } else if (globalVariables.direction == "forest" || globalVariables.direction == "rainforest") {
+                if (globalVariables.direction == "forest") {
+                    var newstory = "\n\nThe tall trees give you plenty wood for the settlment with alot of animals to hunt for.";
+                    var sound = true;
+                    forestQuality = 1;
+                    forestOneWord = "vast";
+                } else {
+                    var newstory = "\n\nThe giant trees here are eaven too much for the settlment. but more than satisfactory";
+                    var sound = "\nThe sound makes you aware of all kinds of animals living here. But frankly sometime it get's anoying";
+                    var plants = "\nThere is emence amounts of difrent plants in the rainforest mosty edible ones";
+                    plantsQuality = 1;
+                    plantsOneWord = "vast";
+                    soundQuality = 2;
+                    soundOneWord = "adaptable";
+                    forestQuality = 1;
+                    forestOneWord = "overkill";
+                }
+                addStory(newstory);
+                var newstory = story.randomizeLocationParameters(true, sound, false, true, plants, terrain, true);
+
+                //Higher locations
+            } else if (globalVariables.direction == "mountains" || globalVariables.direction == "hills") {
+                if (globalVariables.direction == "mountains") {
+                    var newstory = "\n\nThe giant mountains give you a gasp of amazment.";
+                } else {
+                    var newstory = "\n\nThe hills seem peaceful, nothing much but it looks nice.";
+                }
+                addStory(newstory);
+                abbreviation = "are";
+                if (globalVariables.direction == "mountains") {
+                    var sound = "\nThe " + globalVariables.direction + " " + abbreviation + " peaceful and harmonic";
+                    var terrain = "\nThe terrain is very ruged and uneaven which makes it harder to build on.";
+                    terrainOneWord = "rough";
+                } else {
+                    sound = true;
+                    var terrain = "\nThe terrain is marginaly eaven, whitch makes it a little harder to build.";
+                }
+                var newstory = story.randomizeLocationParameters(river, sound, true, true, true, terrain, true);
+            }
+
+            addStory(newstory);
+            // Adds the story and move on button but also the settle button if unocupided
+            buttons.remove("all");
+
+            buttons.create("mv");
+            if (occupiedOneWord != "unwanted") {
+                buttons.create("st");
+            }
+        }
+        settleDirection = globalVariables.direction;
+    },
+    //Randomizes the location story and parameters !!Very Important!!
+    randomizeLocationParameters: function (riverEX = true, soundEX = true, forestEX = true, beautyEX = true, plantsEX = true, terrainEX = true, occupiedEX = true) {
+        luckFactor = 620;
+        locationLuck = (globalVariables.day * globalVariables.visitedLocations) / luckFactor;
+        locationLuck < 0.1 && (locationLuck = 0.1);
+        locationLuck > 3 && (locationLuck = 3);
+
+        var stories = ["river", "sound", "forest", "beauty", "plants", "terrain", "occupied"];
+        parameterList = [...stories];
+        //from parameters we get the diffrent story names
+        //Whlie the original stories array is made to be shuffled and parts of it deleted if randomization for a parameter is disabled
+        var occupied = "";
+        if (riverEX == true) {
+            var river = "";
+            //Randomly chooses to pick a story with Math some. It also can use location as an logical asumptions so it wouldn't make ex. the plants be everywhere but the location be dry.
+            //River Randomizer
+            if (Math.chance(20 * locationLuck)) {
+                river += "\nThere is a river just a little bit away from the posible settlement location.";
+                riverQuality = 1;
+                riverOneWord = "vast";
+            } else if (Math.chance(30 * (locationLuck * 3))) {
+                river += "\nThere is a small river near the possible settlment location. An adequate source for water.";
+                riverQuality = 2;
+                riverOneWord = "fair";
+            } else if (Math.chance(60 * (locationLuck * 3))) {
+                river += "\nScouts were able to sight a river a good distance from the settlment location.";
+                river += "\nThe river is narrow but more than enought for the village.\nBut the distance needed to get to it means the settlment needs a well";
+                riverQuality = 2;
+                riverOneWord = "distant";
+            } else {
+                river += "\nThere is no river near. Not eaven the very perceptive scouts see any water around.";
+                riverQuality = 3;
+                riverOneWord = "none";
+            }
+        } else if (!riverEX) {
+            _.Arr.remove(stories, "river");
+        } else {
+            river = riverEX;
+        }
+        //Sound Randomizer
+        if (soundEX == true) {
+            var sound = "";
+            if (Math.chance(30 * locationLuck)) {
+                sound += "\nThe location is silent. No sound at all exept the colonists talking.";
+                soundOneWord = "silent";
+                soundQuality = 1;
+            } else if (Math.chance(40 * (locationLuck * 3))) {
+                sound += "\nNoting much to hear expect the wind breez. Birds fly here and there.\nOtherwise a pretty silent location.";
+                soundOneWord = "meager";
+                soundQuality = 2;
+            } else if (Math.chance(20 * locationLuck)) {
+                sound += "\nThe sound here is short of amusing. The resonating caves give it a hearthwarming roar.";
+                sound += "\nBirds are singing so beautifly you can almost understand what they are saying";
+                sound += "\nThe wind is breezing silently. You could just lay down and listen for days.";
+                soundOneWord = "amusing";
+                soundQuality = 1;
+            } else {
+                sound += "\nThere is so much sound here it looses it's harmony. Sounds like the birds are arguing and the trees are whining.";
+                sound += "\nHere the crikets criket eaven in day. It'l be hard getting used to these sounds";
+                soundOneWord = "intorelable";
+                soundQuality = 3;
+            }
+        } else if (!soundEX) {
+            _.Arr.remove(stories, "sound");
+        } else {
+            sound = soundEX;
+        }
+        //Forest Randomizer
+        if (forestEX == true) {
+            var forest = "";
+            if (globalVariables.direction == "mountains") {
+                var fproximity = "on the mountain";
+            } else {
+                var fproximity = "near";
+            }
+            if (Math.chance(20 * locationLuck)) {
+                forest += "\nThere is a small forest " + fproximity + ". It has all the wood needed to add to the village.";
+                forest += "\nThe forest is filled with trees of diffrent types. There may be wild animals in it.";
+                forestQuality = 1;
+                forestOneWord = "satisfactory";
+            } else if (Math.chance(50 / locationLuck)) {
+                forest += "\nThere are no trees here hardly any in the forest. Altho the forest is " + fproximity + ", it's very small with only thin trees.";
+                forestQuality = 3;
+                forestOneWord = "mediocre";
+            } else if (Math.chance(40 * (locationLuck * 3))) {
+                forest += "\nA big and wide forest with only thick strong trees. Hard to cut through but enought wood for decades";
+                forest += "\nThe forest is a home to all kinds of birds and animals. Whatch out in the night";
+                forestQuality = 2;
+                forestOneWord = "thick";
+            } else {
+                forest += "\nScouts look for any kind of a tree around which leads them to faliure.";
+                forest += "\nThere is no sign of a single pice of wood here. Planting trees is the only hope";
+                forestQuality = 3;
+                forestOneWord = "none";
+            }
+        } else if (!forestEX) {
+            _.Arr.remove(stories, "forest");
+        } else {
+            forest = forestEX;
+        }
+        //Beauty Randomizer
+        if (beautyEX == true) {
+            var beauty = "";
+            if (Math.chance(40 * (locationLuck * 3))) {
+                beauty += "\nIt's beauty is pleasing to look at. Nothing special but it'll do.";
+                beautyOneWord = "ordinary";
+                beautyQuality = 2;
+            } else if (Math.chance(20 * locationLuck)) {
+                beauty += "\nThe terrain here has outstanding beauty with perfect locations for scouting.";
+                beauty += "\nThe sun shines brightly with a smile filled with joy and inspiration.";
+                beauty += "\nThe breathtaking look strips you of your worries and lets you drift trough air.";
+                beautyOneWord = "wonderfull";
+                beautyQuality = 1;
+            } else if (Math.chance(40 * (locationLuck * 3)) || globalVariables.direction == "lake" || globalVariables.direction == "river" || globalVariables.direction == "rainforest") {
+                beauty += "\nOnce you look at this place it gives you hearthwarmin sadness.";
+                beauty += "\nPretty in a fashion you don't understand. Depressing but yet motivating.";
+                beautyQuality = 2;
+                beautyOneWord = "bewildering";
+            } else {
+                beauty += "\nThe first look at this location made " + Math.round(globalVariables.colonists / 4) + " of the colonists collapse";
+                beauty += "\nIt's sheer uglynes scares eaven the animals away.\nIt'll be hard living here but it's possible to get used to it ";
+                beautyOneWord = "horrid";
+                beautyQuality = 3;
+            }
+        } else if (!beautyEX) {
+            _.Arr.remove(stories, "beauty");
+        } else {
+            beauty = beautyEX;
+        }
+        //Plants Randomizer
+        if (plantsEX == true) {
+            var plants = "";
+            if (Math.chance(10 * (locationLuck * 3))) {
+                plants += "\nThere is not much plant life here exept grass.";
+                plantsQuality = 2;
+                plantsOneWord = "limited";
+            } else if (Math.chance(10 / locationLuck)) {
+                plants += "\nThe plant life here is dangerous and very poisonus from the looks of it.";
+                plants += "\nBetter watch your step out here.";
+                plantsOneWord = "dangerous";
+                plantsQuality = 3;
+            } else if (Math.chance(10 / locationLuck) && (direction != "lake") & (direction != "river")) {
+                plants += "\nThere is no sign of any plant life here. Everything is mostly dry.";
+                plants += "\nLittle snipents of grass here and there but all in all it's empty.";
+                plantsQuality = 3;
+                plantsOneWord = "empty";
+            } else {
+                plants += "\nThe plants here grow with strenght and confidance. Everywhere are diffrent kinds of plants.";
+                plants += "\nVery pleasing to look at and motivational. The plants welcome you to their enviorment.";
+                plantsQuality = 1;
+                plantsOneWord = "lifefull";
+            }
+        } else if (!plantsEX) {
+            _.Arr.remove(stories, "plants");
+        } else {
+            plants = plantsEX;
+        }
+        //Terrain Randomizer
+        if (terrainEX == true) {
+            var terrain = "";
+            if (Math.chance(40 / (locationLuck * 3))) {
+                terrain += "\nTerrain is very uneaven and rough.There's hardly any space for a settlmant but it's possible";
+                terrainQuality = 3;
+                terrainOneWord = "rough";
+            } else if (Math.chance(20 * (locationLuck * 3))) {
+                terrain += "\nThe terrain is mostly flat but with alot of deep holes around. Intresting but also dangerous";
+                terrainOneWord = "mild";
+                terrainQuality = 2;
+            } else if (Math.chance(30 * locationLuck) && globalVariables.direction != "lake" && globalVariables.direction != "river" && (globalVariables.direction == "city" || globalVariables.direction == "village")) {
+                terrain += "\nThe terrain is very flat and eaven at this location.No holes or other anomalyes.";
+                terrainQuality = 1;
+                terrainOneWord = "eaven";
+            } else {
+                terrain += "\nThe terrain has lot's of hills surroinding a mostly flat location.They somwhat block the sky and the expansion of the village but it's sufficient.";
+                terrainQuality = 2;
+                terrainOneWord = "enclosed";
+            }
+        } else if (!terrainEX) {
+            _.Arr.remove(stories, "terrain");
+        } else {
+            terrain = terrainEX;
+        }
+        //If occupied Randomizer
+        if (occupiedEX == true) {
+            occupied = "";
+            if (Math.chance(5 * locationLuck) && terrainOneWord != "rough") {
+                occupied += "\nBut somebody is already settled here. It's a small village.\nUpon further talking with the villagers they grant your group asylum On their little world if you choose so.";
+                occupiedQuality = 1;
+                occupiedOneWord = "small village";
+            } else if (Math.chance(5 / (locationLuck / 2)) && terrainOneWord != "rough") {
+                occupied += "\nBut somebody is already settled here. It's a fairly big village\nThe colonists seem unwelcomeing. It's clear that your presence disturbes them. They don't want you here.";
+                occupiedOneWord = "unwanted";
+                occupiedQuality = 3;
+            } else if (Math.chance(5 * locationLuck) && terrainOneWord != "rough") {
+                campOcupiers = Math.roundRandom(5, 15);
+                var addon = "";
+                if (Math.chance(50)) {
+                    var addon = "s";
+                }
+                if (Math.chance(50)) {
+                    colonists += campOcupiers;
+                    addon += "he agrees. they have been doing this for a long time. It's time for a change. It'll be nice living in peace again\n" + campOcupiers + "colonists join you";
+                } else {
+                    addon += "he replies that there is much more to explore and that they just recently started so he chooses to stay but thank you for the generous offer.";
+                }
+                occupied += "\nThere is a small camp here with " + campOcupiers + " colonists in it.\nThe leader tells you that they are just a group of explorers on a jurney. You explain that you are exploring too but for a diffrent purpouse. You ask them if they want to join you and " + addon;
+                occupiedOneWord = "camp";
+                occupiedQuality = 4;
+            } else if (Math.chance(10 * locationLuck)) {
+                if (globalVariables.colonists > 20) {
+                    var addon = " But you must build a village outside the city becouse there is not much place in here.";
+                }
+                occupied += "\nThere is a thriving city here. The citizens seem open-minded and welcoming. Upon further talking with the mayor he grant's you asylum here with no hesetation." + addon;
+                occupiedQuality = 1;
+                occupiedOneWord = "big city";
+            } else {
+                if (Math.chance(50)) {
+                    occupied += "\nThere seems to be no one settled here";
+                } else if (Math.chance(50)) {
+                    occupied += "\nNo sign of a city or a village near";
+                } else if (Math.chance(50)) {
+                    occupied += "\nAlso the ground is clear without any already existing structures";
+                } else if (Math.chance(50)) {
+                    occupied += "\nNew land and nothing on it";
+                } else {
+                    occupied += "\nNobody lives here for now";
+                }
+                occupiedQuality = 4;
+                occupiedOneWord = "unoccupied";
+            }
+        } else if (!occupiedEX) {
+            _.Arr.remove(stories, "occupied");
+        } else {
+            occupied = occupiedEX;
+        }
+
+        let occupiedBy = occupiedOneWord == "big city" ? "city" : occupiedOneWord == "small village" || occupiedOneWord == "unwanted" ? "village" : null;
+
+        rememberedLocations.getLocation(map.currentPos.x, map.currentPos.y).occupied = occupiedBy;
+        //Adds a visual quality representation for each parameter
+        for (let i = 0; i < parameterList.length; i++) {
+            _.id(parameterList[i] + "-quality").innerHTML = eval(parameterList[i] + "OneWord");
+            parameterQuality = eval(parameterList[i] + "Quality"); //Forms a variable which has the quality number in it
+            if (parameterQuality == 1) {
+                colorout = "green";
+            } else if (parameterQuality == 2) {
+                colorout = "yellow";
+            } else if (parameterQuality == 3) {
+                colorout = "red";
+            } else {
+                colorout = "grey";
+            }
+            _.id(parameterList[i] + "-quality").style.color = colorout;
+        }
+        //Shows the visual representation of the parameter quality
+        _.id("location-quality-container").style.display = "flex";
+        //Shuffles the stories so that the order is not same on every location
+        _.Arr.remove(stories, "occupied");
+        _.Arr.shuffle(stories);
+        var createdStory = "";
+        //Adds the shuffled stories together. Because they are stored in a variable of which name is in the stories array. the eval function is used to retrive them
+        for (let i = 0; i < stories.length; i++) {
+            createdStory += eval(stories[i]);
+        }
+        createdStory += occupied; // Leave the info if the location is occupied at the end of the story
+        return createdStory;
+    },
+
+    moveon: function (stage = 0) {
+        // if you choose to move on it randomizes the directions, adds their buttons and story
+        if (stage == 0) {
+            stat.update();
+            var newstory = "";
+            overwriteStory();
+            var colonistsLost = 0;
+            if (globalVariables.food == 0) {
+                colonistsLost += Math.roundRandom(6, 13);
+                newstory += "The lack of food let " + colonistsLost + " of the colonists starving and as a result they died\n";
+            }
+            if (globalVariables.water == 0 && colonists != 0) {
+                colonistsLost += Math.roundRandom(10, 25);
+                newstory += "The lack of water let " + colonistsLost + " of the colonists to dehidrate and as a result they died\n";
+            }
+
+            (globalVariables.food == 0 || globalVariables.water == 0) && overwriteStory(newstory);
+            colonistsLost > 0 && stat.remove.colonists(colonistsLost);
+            newstory = "";
+
+            if (globalVariables.colonists <= 0) {
+                _.id("location-quality-container").style.display = "none";
+                addStory(newstory);
+                buttons.remove("all");
+                buttons.create("c", "story.fail('supplies')");
+            } else {
+                if (globalVariables.food == 0 || globalVariables.water == 0) {
+                    newstory = "";
+                    newstory += "\nBut nontheless, ";
+                }
+
+                _.id("location-quality-container").style.display = "none";
+                newstory += "You choose to move on and continue your walk.\nYour scouts seek out the possible directions.";
+                addStory(newstory);
+                buttons.remove("all");
+                buttons.create("c", "story.moveon(1)");
+            }
+        } else if (stage == 1) {
+            //Stages to make a pouse and not owerwhelm you with information
+            addStory(story.randomizeDirections());
+        }
+    },
+
+    fail: function (cause, stage = 0) {
+        var newstory = "";
+        if (cause == "supplies") {
+            if (stage == 0) {
+                newstory += "\nBecause of the lack of supplies";
+                newstory += "\nThe last of your colonists " + ((globalVariables.water <= 0 && "dehidrated") || "") + ((globalVariables.water <= 0 && food <= 0 && " and or ") || "") + ((globalVariables.food <= 0 && "starved") || "") + " to death!";
+            }
+            overwriteStory(newstory);
+        }
+        addStory("\n\nThis means GAME OVER chief!\nWould you like to restart?");
+        buttons.create("c", "story.restart()");
+        _.id("story-continue-button").innerHTML = "Restart";
+    },
+
+    //Updates the stas on a interval
+    // setInterval(updateStats, 100);
+    settleHere: function (stage = null) {
+        if (stage == null) {
+            direction = settleDirection;
+            if (Math.chance(50)) {
+                var newstory = "\nYou choose to settle here. The colonists start building a settlment.";
+            } else if (Math.chance(50)) {
+                var newstory = "Upon further thinking you choose to settle here.The settlment is alredy buing built.";
+            } else if (Math.chance(50)) {
+                var newstory = '\nYour decision is finnal. You said "We\'ll settle here" as the colonists begin constructing a settlment.';
+            } else {
+                var newstory = "\nYou told to the colonists that we'll stop looking and just settle here. They start building a settlment.";
+            }
+            buttons.remove("all");
+            overwriteStory(newstory);
+            buttons.create("c", "story.settleHere(1)");
+        } else if (stage == 1) {
+            //terrain
+            var colonistsLost = 0;
+            var newstory = "\n";
+            if (terrainOneWord == "rough") {
+                newstory += "\nAltho the terrain is rought, your colonists manage to fit in the settlment. But there is a serius lack of space in each room.";
+                if (globalVariables.direction == "mountains") {
+                    storySumUp = "The villagers live in the caves of a mountin";
+                    newstory += " As they now live inside of mountain caves";
+                } else {
+                    storySumUp = "The villagers live in small houses on a rough terrain";
+                }
+            } else if (terrainOneWord == "mild") {
+                newstory += "\nThe terrain is wierd with alot of deep holes which meansthe settlment had to be built around them.";
+                storySumUp = " The villagers stands around deep holes in the terrain";
+                if (Math.chance(50)) {
+                    colonistsLost += Math.roundRandom(1, 5);
+                    newstory += " Unfortunetlly " + colonistsLost + " of the colonists fell in and died.";
+                }
+            } else if (terrainOneWord == "eaven") {
+                newstory += "\nThe terrain is eaven which makes it easy for the settlment's construction";
+                storySumUp = "The village stands on a fine eaven terrain, not to flat and not too roughed";
+            } else if (terrainOneWord == "enclosed") {
+                newstory += "\nThere is enough space for the settlment and eaven a village but not a city.";
+                occupiedOneWord == "big city" && (newnewstory += " Logically because there alredy exists one here.");
+                storySumUp = "The village lives on a enclosed terrain";
+            } else if (terrainOneWord == "fine") {
+                newstory += "\nThe terrain is mostly flat. The perfect building grounds.";
+                storySumUp = "The villagers live in houses on a mostly flat terrain";
+            } else if (terrainOneWord == "flat") {
+                newstory += "\nThe flat terrain makes it easy to construct a settlment.";
+                storySumUp = "The villagers live in houses on a flat terrain";
+            }
+            if (riverOneWord == "vast" && globalVariables.direction == "lake") {
+                newstory += "\nThe large lake leaves your colonists with a vast water supply. Altho it needs minor fitering to get all the leaves and sticks out, It's a grand location of the village.";
+                storySumUp += " next to a large lake";
+            } else if (riverOneWord == "fair") {
+                newstory += "\nThe presents of a river eaven a small one gives the village much water they can use.";
+                storySumUp += " with a small river going throught their village";
+            } else if (riverOneWord == "distant") {
+                storySumUp += " with a distan lake they colect water from";
+                newstory += "\nThe distant river is full with free flowing water, but it's distance from the village makes it hard to get water. Thankfully a big well was emidiatly built which holds enough watter to saturate the population.";
+            } else if (riverOneWord == "none") {
+                newstory += "\nThe absence of a river makes the colonists suffer from dehidration until they built a well which collected watter from the earth. It's bearlly adaquet and the water is heavaly proportioned.";
+                colonistsLost += Math.roundRandom(globalVariables.colonists * 0.1, globalVariables.colonists * 0.2);
+                newstory += "\nUnfortunetly " + colonistsLost + " colonists dehidrated beacause of lacking water supply.";
+                storySumUp += " with small amounts of watter to use";
+            } else if (riverOneWord == "joyfull") {
+                storySumUp += " next to a happy litle river flowing throught the village";
+                newstory += "\nThe present's of a common river gives the village plenty of water to use.They nvere need to worry of dehidration.";
+            } else if (riverOneWord == "dirty") {
+                storySumUp += " around a swamp";
+                newstory += "\nThe swamp water is too dirty for normal cosumtion, so your colonists made a natural filter using rock, coal, leaves, and other materials to get drinkable water";
+            }
+            addStory(newstory);
+            colonistsLost != 0 && stat.remove.colonists(colonistsLost);
+
+            buttons.create("c", "story.settleHere(2)");
+        } else if (stage == 2) {
+            //food
+            var newstory = "\n";
+            if (plantsOneWord == "vast" || forestOneWord == "vast" || forestOneWord == "overkill" || riverOneWord == "vast") {
+                if (plantsOneWord == "vast" && forestOneWord != "vast" && forestOneWord != "overkill" && forestOneWord != "mediocre" && forestOneWord != "none" && riverOneWord == "vast") {
+                    newstory += "\nwith alot of plants wild animals and fish in the river the colonist will never run out of food. The harvested, hunted and or catched food they store it in a big food bank.";
+                    storySumUp += "and with a vast libary of food around them.";
+                } else if (forestOneWord == "overkill") {
+                    colonistsLost += Math.roundRandom(-5, 5);
+                    newstory += "There is alot of plants in the rainforest with that comes alot of wild animals. eaven dangerous ones.";
+                    var suffix = "";
+                    var prefix = "";
+                    colonistsLost > 1 ? (suffix = "s") : colonistsLost == 0 && (prefix = "a");
+
+                    if (colonistsLost < 1) {
+                        newstory += "Some of the animals managed to kill " + prefix + " " + colonistsLost + " colonist" + suffix + " while they we're hunting for food";
+                    } else {
+                        newstory += " But thankfully while the colonist we're out hunting they came back and learned how to avoid the dangers of the forest.";
+                    }
+                    storySumUp += " in a rain forest with alot of difrent types of food";
+                } else if (plantsOneWord == "vast" && forestOneWord == "vast") {
+                    newstory += "The village is rich with plants and there are many animals in the forest which give the villagers alot of food supliments.";
+                    storySumUp += " and with plenty of food";
+                } else if (forestOneWord == "vast" && riverOneWord == "vast") {
+                    newstory += "The presents of a forest and a river grants your village the plasure of having fish and animal meat.";
+                    storySumUp += " and with plenty of food";
+                } else if (plantsOneWord == "vast" && riverOneWord == "vast") {
+                    newstory += "With a river and alot of plants there will be alot of fish and vegetarian food.";
+                    storySumUp += " and with plenty of food";
+                } else {
+                    if (plantsOneWord == "vast") {
+                        newstory += "With much plants and nothing else to eat the people have a strict vegeterian diet";
+                        storySumUp += ". The People become vegetarian from the vast plant life";
+                    } else if (forestOneWord == "vast") {
+                        newstory += "With enough meat from the wildlife in the forest it feeds the village's population";
+                        storySumUp += ". They become meatatarian becouse of the extence wildlife";
+                    } else if (riverOneWord == "vast" || terrainOneWord == "mild" || terrainOneWord == "enclosed" || terrainOneWord == "rough") {
+                        newstory += "Fishing is here a primary source of food. the fish are eaven bread inorder to sustain the population";
+                        storySumUp += ". They mostly eat fish all the time";
+                    }
+                }
+                if (terrainOneWord != "mild" && terrainOneWord != "enclosed" && terrainOneWord != "rough") {
+                    newstory += " The flat terrain allows them to grow a big field of crops they need to make their food eaven better.";
+                } else if (terrainOneWord == "enclosed") {
+                    newstory += " Altho the terrain is kind of limited it still allows them much space to grow the crops they want.";
+                } else {
+                    newstory += " Altho there is plenty of natural food, the growing of their favourite crops is restricted by the terrain and the unfertile soil, hjm";
+                    newstory += " so they made green houses where they grew their crops. Beacause of their limited supply eaven bread becomes a delicacy.";
+                }
+            } else {
+                newstory += " Because of little to no food to spare the farmers try growing crops with little success. The unfertile soil makes it hard for eave the grass to grow.";
+                storySumUp += " with little food to spare or grow so most of it was rationed";
+            }
+            addStory(newstory);
+            buttons.create("c", "story.settleHere(3)");
+            // beauty / sound
+        } else if (stage == 3) {
+            locationsExplored = false;
+            addStory("\n");
+            addStory("\nWith their shelter and food supply secured they went on to explore their surroundings");
+            addStory("\n\n");
+            if (globalVariables.direction == "forest") {
+                this.exploreStories.smallCave(25);
+                this.exploreStories.oldHut(5);
+                this.exploreStories.bigTree(20);
+                this.exploreStories.oldTemple(8);
+                this.exploreStories.settlmentRemains(4);
+                this.exploreStories.monumentalRuins(6);
+            } else if (globalVariables.direction == "rainforest") {
+                this.exploreStories.smallCave(25);
+                this.exploreStories.oldHut(5);
+                this.exploreStories.bigTree(20);
+                this.exploreStories.smallHouses(6);
+                this.exploreStories.oldTemple(8);
+                this.exploreStories.settlmentRemains(4);
+                this.exploreStories.MonumentalRuins(6);
+            } else if (globalVariables.direction == "lake") {
+                this.exploreStories.smallCave(5);
+                this.exploreStories.oldHut(8);
+                this.exploreStories.smallHouses(5);
+                this.exploreStories.settlmentRemains(3);
+                this.exploreStories.MonumentalRuins(2);
+            } else if (globalVariables.direction == "river") {
+                this.exploreStories.oldHut(6);
+                this.exploreStories.smallHouses(10);
+                this.exploreStories.settlmentRemains(6);
+                this.exploreStories.MonumentalRuins(1);
+            } else if (globalVariables.direction == "swamp") {
+                this.exploreStories.oldHut(10);
+                this.exploreStories.bigTree(25);
+                this.exploreStories.oldTemple(2);
+                this.exploreStories.MonumentalRuins(4);
+            } else if (globalVariables.direction == "mountains") {
+                this.exploreStories.smallCave(15);
+                this.exploreStories.caves(20);
+                this.exploreStories.oldHut(5);
+                //this.exploreStories.oldMines(20);
+                this.exploreStories.MonumentalRuins(5);
+            } else if (globalVariables.direction == "hills") {
+                this.exploreStories.smallCave(5);
+                this.exploreStories.oldHut(8);
+                //this.exploreStories.oldMines(8);
+                this.exploreStories.settlmentRemains(4);
+                this.exploreStories.MonumentalRuins(5);
+            } else if (globalVariables.direction == "valley") {
+                this.exploreStories.smallCave(5);
+                this.exploreStories.caves(2);
+                this.exploreStories.oldHut(5);
+                this.exploreStories.smallHouses(10);
+                this.exploreStories.settlmentRemains(8);
+                this.exploreStories.MonumentalRuins(4);
+            } else if (globalVariables.direction == "plains") {
+                this.exploreStories.oldHut(10);
+                this.exploreStories.smallHouses(12);
+                this.exploreStories.settlmentRemains(8);
+                this.exploreStories.MonumentalRuins(7);
+            }
+            if (!locationsExplored) {
+                addStory("\nBut even upon hours and hour of exploring. They found nothing interesting around their settlement. Most of their time is spent talking to one and other, and contributing to the development of the settlment.");
+                storySumUp += "Altho around the settlement they had nothing interesting, so most of their time they spent inside the settlement";
+            }
+            addStory(
+                "\n\nAnd our journey ends on day " +
+                day +
+                " of this long walk. Your colonists went through " +
+                visitedLocations +
+                " different locations, but you, as their leader, decided that this is the best one yet. A monument stands in the center of the settlement for those " +
+                globalVariables.colonistsLostOverall +
+                " people who were lost in the process of the journey, and a message, thanking you, for your guidance. Maybe the new location isn't what many of the colonists hoped for. Maybe they don't have everything they could, but at least now, now they have a place, they can call, home sweet home."
+            );
+            buttons.create("c", "story.sumUp()");
+            _.id("story-continue-button").innerHTML = "Finish";
+        }
+    },
+
+    sumUp: function () {
+        overwriteStory(newstorySumUp);
+    },
+
+    restart: function () {
+        setDefaultVariables();
+
+        _.id("story-text").innerHTML = "And there it was, Their village burned to ashes.";
+        buttons.create("c", "story.beginning(1)");
+        _.id("story-button-container").innerHTML = "<button id='story-continue-button' onclick='story.beginning(1)'>Continue</button>1<button id='story-skip-button' onclick='story.beginning(100,true)'>Skip</button>";
+    },
+};
+
+stat = {
+    remove: (remove = {
+        colonists: function (num) {
+            globalVariables.colonistsLostOverall += num;
+            globalVariables.colonists -= num;
+            addStory("\n*You lost " + num + " colonist");
+            num > 1 && addStory("s"); //add a 's' if more colonists were lost
+            stat.update();
+        },
+        resources: function (num) {
+            globalVariables.resourcesLostOverall += num;
+            globalVariables.resources -= num;
+            addStory("\n*You lost " + num + " resource");
+            num > 1 && addStory("s");
+            stat.update();
+        },
+        water: function (num) {
+            globalVariables.waterLostOverall += num;
+            globalVariables.water -= num;
+            addStory("\n*You lost " + num + " water");
+            stat.update();
+        },
+        food: function (num) {
+            globalVariables.foodLostOverall += num;
+            globalVariables.food -= num;
+            addStory("\n*You lost " + num + " food");
+            stat.update();
+        },
+    }),
+    add: (add = {
+        colonists: function (num) {
+            globalVariables.colonists += num;
+            addStory("\n*You gained " + num + " colonists");
+            stat.update();
+        },
+        resources: function (num) {
+            globalVariables.resources += num;
+            addStory("\n*You gained " + num + " resources");
+            stat.update();
+        },
+        water: function (num) {
+            globalVariables.water += num;
+            addStory("\n*You gained " + num + " water");
+            stat.update();
+        },
+        food: function (num) {
+            globalVariables.food += num;
+            addStory("\n*You gained " + num + " food");
+            stat.update();
+        },
+    }),
+
+    update: function () {
+        for (let i = 0; i < stats.length; i++) {
+            let statvarname = "globalVariables." + stats[i];
+            statname = stats[i];
+            if (eval(statvarname) < 0) {
+                eval(statvarname + "LostOverall-=" + statvarname);
+                eval(statvarname + " = 0");
+            }
+            statChange(statname, 0);
+
+            statval = eval(statvarname);
+
+            if (statval != Number(_.id("stat-" + statname).innerHTML)) {
+                statChange(statname, statval - Number(_.id("stat-" + statname).innerHTML));
+            }
+            _.id("stat-" + statname).innerHTML = statval;
+
+            //Updates the stats and color codes them with MATH!!!
+            if (statname != "day") {
+                maxstat = 100;
+                if (statname == "resources") {
+                    maxstat = 25;
+                }
+
+                var blue = 0;
+                var green = eval(statvarname) * (255 / maxstat);
+                var red = 255 - green;
+
+                if (red < 0) {
+                    red = 0;
+                }
+            } else {
+                var green = 102;
+                var red = 102;
+                var blue = 102;
+            }
+            _.id("stat-" + statname).style.color = "rgb(" + red + "," + green + "," + blue + ")";
+        }
+
+        function statChange(statId, num) {
+            if (num !== 0 && statId !== "day") {
+                _.id("stat-change-" + statId).innerHTML = (num > 0 && "+") + num;
+
+                if (num > 0) {
+                    _.id("stat-change-" + statId).style.color = "green";
+                } else {
+                    _.id("stat-change-" + statId).style.color = "red";
+                }
+            } else {
+                statId != "day" && (_.id("stat-change-" + statId).innerHTML = "");
+            }
+        }
+    },
+};
+
+rememberedLocations = {
+    loc0x0y: {
+        x: 0,
+        y: 0,
+        visited: true,
+        color: "lime",
+        type: "plains",
+        occupied: null,
+    },
+
+    getLocation: function (x, y) {
+        return eval("rememberedLocations." + `loc${x.toString().replace("-", "n")}x${y.toString().replace("-", "n")}y`);
+    },
+    addLocation: function (x, y, obj) {
+        return eval("rememberedLocations." + `loc${x.toString().replace("-", "n")}x${y.toString().replace("-", "n")}y=${JSON.stringify(obj)}`);
+    },
+};
+
+map = {
+    gridsize: 5,
+    gridmedian: 2,
+    currentPos: {
+        x: 0,
+        y: 0,
+    },
+    draw: function () {
+        _.id("map-grid").innerHTML = "";
+        for (let y = 0; y < this.gridsize; y++) {
+            cellY = map.currentPos.y + map.gridmedian - y;
+
+            _.id("map-grid").innerHTML += "<div id='map-grid-row-" + y + "' class='map-grid-row'></div>";
+            for (let x = 0; x < map.gridsize; x++) {
+                cellX = map.currentPos.x - map.gridmedian + x;
+                _.id("map-grid-row-" + y).innerHTML += `<div class='map-grid-cell' id='${cellX}:${cellY}'></div>`;
+            }
+        }
+        let cells = _.class("map-grid-cell");
+        for (let i = 0; i < cells.length; i++) {
+            cell = cells[i];
+            let [x, y] = cell.id.replace(/-/g, "n").split(":");
+            cellData = rememberedLocations.getLocation(x, y);
+            if (cellData != undefined) {
+                _.id(cellData.x + ":" + cellData.y).style.backgroundColor = cellData.color;
+
+                cellData.visited && (_.id(cellData.x + ":" + cellData.y).style.borderColor = "lead");
+                cellData.occupied != null && (_.id(cellData.x + ":" + cellData.y).style.backgroundImage = `url('../img/${cellData.occupied}.png')`);
+            }
+        }
+        _.id(map.currentPos.x + ":" + map.currentPos.y).style.borderColor = "yellow";
+    },
+};

@@ -1,0 +1,28 @@
+.stat_list
+    background-color: var(--light-black)
+    color: var(--accent)
+    border: 2px solid var(--accent)
+    font-weight: 600
+    >.tabs
+        flex: 1 1 auto
+        text-align: center
+        margin: auto
+        >input[type='radio']
+            display: none
+            width: 0px
+            height: 0px
+            flex: 1 1 auto
+        >label
+            cursor: pointer
+            padding: 0.2em
+            padding-top: 0.4em
+            border-bottom: 2px solid var(--accent)
+
+        >input[type='radio']:checked + label
+            background-color: var(--accent)
+            color: var(--light-black)
+
+    > h5
+        background-color: var(--accent)
+        color: var(--light-black)
+        text-align: center
